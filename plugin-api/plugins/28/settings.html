@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html style="display: flex;justify-content: center;align-items: center;height: 100%;">
+	<head>
+		<meta charset="utf-8">
+		<script src="//cdn.plugin.ovh:5555/js/plugin.js"></script>
+		<script src="js/settings.js"></script>
+	</head>
+	<body>
+        <label for="newsCategory">Select news category</label>
+        <select id="newsCategory" name="newsCategory">
+            <option value="" selected>Top Stories</option>
+            <option value="/world">World</option>
+            <option value="/uk">UK</option>
+            <option value="/business">Business</option>
+            <option value="/politics">Politics</option>
+            <option value="/health">Health</option>
+            <option value="/education">Education &amp; Family</option>
+            <option value="/science_and_environment">Science &amp; Environment</option>
+            <option value="/technology">Technology</option>
+            <option value="/entertainment_and_arts">Entertainment &amp; Arts</option>
+        </select>
+		<button onclick="onSave()">Save</button>
+	</body>
+</html>

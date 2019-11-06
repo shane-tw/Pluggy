@@ -1,0 +1,20 @@
+.button {
+  transition: transform 0.2s ease-in-out;
+  background-color: #4ABDAC;
+  color: white;
+  cursor: pointer;
+  height: 2.5rem;
+  width: 10rem;
+  padding: 0;
+  border: 0;
+
+  &--clickable {
+    cursor: pointer;
+
+    &:hover, &:focus {
+      outline: 0;
+      font-size: 1.2rem;
+      transform: scale(1.08);
+    }
+  }
+}

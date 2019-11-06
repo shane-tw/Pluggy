@@ -1,0 +1,9 @@
+**Database setup (Linux)**
+* Install MariaDB v10.3 (refer to [here](https://downloads.mariadb.org/mariadb/repositories))
+* (Optional - Improves security) sudo mysql_secure_installation
+ * Change the root password [y] (can be anything)
+ * Remove anonymous users [y]
+ * Disallow root login remotely [y]
+ * Remove test database and access to it? [y]
+ * Reload privilege tables now? [y]
+* `sudo mysql -u root -p < schema.sql` (requires entering the root password previously set, or blank if not set)

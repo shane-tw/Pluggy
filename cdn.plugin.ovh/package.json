@@ -1,0 +1,41 @@
+{
+	"sideEffects": [
+		"./src/js/operator/listeners.js",
+		"./src/js/plugin/listeners.js"
+	],
+	"scripts": {
+		"dev": "webpack --mode development",
+		"build": "webpack --mode production"
+	},
+	"devDependencies": {
+		"@babel/cli": "^7.2.3",
+		"@babel/core": "^7.4.0",
+		"@babel/plugin-proposal-class-properties": "^7.4.0",
+		"@babel/plugin-transform-object-assign": "^7.2.0",
+		"@babel/plugin-transform-runtime": "^7.4.0",
+		"@babel/preset-env": "^7.4.2",
+		"@babel/runtime-corejs2": "^7.4.2",
+		"@babel/runtime-corejs3": "^7.4.3",
+		"autoprefixer": "^9.4.7",
+		"babel-eslint": "^10.0.1",
+		"babel-loader": "^8.0.5",
+		"babel-minify": "^0.5.0",
+		"core-js": "^3.0.1",
+		"css-loader": "^2.1.0",
+		"eslint": "^5.13.0",
+		"eslint-loader": "^2.1.2",
+		"fetch-ponyfill": "^6.0.2",
+		"mini-css-extract-plugin": "^0.5.0",
+		"node-sass": "^4.11.0",
+		"optimize-css-assets-webpack-plugin": "^5.0.1",
+		"postcss-loader": "^3.0.0",
+		"sass-loader": "^7.1.0",
+		"uglifyjs-webpack-plugin": "^2.1.1",
+		"webpack": "^4.29.3",
+		"webpack-cli": "^3.2.3",
+		"webpack-fix-style-only-entries": "^0.2.0"
+	},
+	"dependencies": {
+		"@babel/runtime": "^7.4.3"
+	}
+}
