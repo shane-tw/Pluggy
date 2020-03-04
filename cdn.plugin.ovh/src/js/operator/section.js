@@ -2,7 +2,6 @@ import CommonSection from '../common/section';
 import { getComponentElem } from '../operator/elems';
 import getSelector from '../utils/getSelector';
 import * as actions from '../constants/actions';
-import Deferred from '../utils/deferred';
 
 function isPrimitive(val) {
 	const primitives = ['string', 'boolean', 'number'];
@@ -29,25 +28,6 @@ function getContext(sectionElem) {
 	try {
 		return JSON.parse(tmp);
 	} catch {} //eslint-disable-line no-empty
-}
-
-function handleDeferred(deferred, component, holder) {
-	if (!deferred) return;
-	deferred.then((params) => {
-		const child = component.render(null, params);
-		const dataset = child.dataset;
-		dataset.psComponentId = component.id;
-		dataset.psComponentTag = component.tag;
-		dataset.psPluginId = component.plugin.id;
-		holder.appendChild(child);
-		delete inProgress[component.plugin.id][component.id];
-	});
-}
-
-function handleAll(promises, section, holder) {
-	Promise.all(promises).then(() => {
-		section.appendChild(holder);
-	});
 }
 
 let inProgress = {};
@@ -87,19 +67,33 @@ class Section extends CommonSection {
 				inProgress[component.plugin.id][component.id] = true;
 				const pluginFrame = component.plugin._elem;
 				if (!pluginFrame) continue;
-				const deferred = new Deferred().register();
-				handleDeferred(deferred, component, holder);
-				pluginFrame.contentWindow.postMessage({
-					action: actions.GET_RENDER_PARAMS,
-					deferredId: deferred.id,
-					params: {
-						component: component.plain(),
-						context: getContextKO(section) || getContext(section)
-					}
-				}, '*');
-				promises.push(deferred);
+				const promise = new Promise((resolve, reject) => {
+					const channel = new MessageChannel();
+					channel.port1.onmessage = (e) => resolve(e.data);
+					channel.port1.onmessageerror = (e) => reject(e.data);
+					pluginFrame.contentWindow.postMessage({
+						action: actions.GET_RENDER_PARAMS,
+						params: {
+							component: component.plain(),
+							context: getContextKO(section) || getContext(section)
+						}
+					}, '*', [channel.port2]);
+				});
+				promise.then((params) => {
+					const child = component.render(null, params);
+					const dataset = child.dataset;
+					dataset.psComponentId = component.id;
+					dataset.psComponentTag = component.tag;
+					dataset.psPluginId = component.plugin.id;
+					holder.appendChild(child);
+					delete inProgress[component.plugin.id][component.id];
+				});
+				promises.push(promise);
 			}
-			handleAll(promises, section, holder);
+
+			Promise.all(promises).then(() => {
+				section.appendChild(holder);
+			});
 		}
 	}
 }

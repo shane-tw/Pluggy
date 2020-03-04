@@ -31,16 +31,7 @@ function enablePlugins() {
 }
 
 function retrievePlugins() {
-	var d = new plug.Deferred();
-	plug.fetch('http://plugin.ovh:4040/api/v1/sites/' +
-				plug.siteId + '/users/me/plugins', {
-		credentials: 'include'
-	}).then(function (r) {
-		return r.json();
-	}).then(function (j) {
-		d.resolve(j);
-	}).catch(function (e) {
-		d.reject(e);
-	});
-	return d;
+	const url = `http://plugin.ovh:4040/api/v1/sites/${plug.siteId}/users/me/plugins`;
+	const creds =  { credentials: 'include' };
+	return plug.fetch(url, creds).then((r) => r.json());
 }

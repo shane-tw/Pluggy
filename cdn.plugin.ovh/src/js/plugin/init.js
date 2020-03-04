@@ -1,6 +1,5 @@
 import Button from './button';
 import Dialog from './dialog';
-import Deferred from '../utils/deferred';
 import Section from './section';
 import Widget from './widget';
 import fetchInternal from './fetchInternal';
@@ -14,15 +13,24 @@ import plug from '.';
 
 export default () => {
 	delete plug.init;
-	const deferred = new Deferred().register();
-	deferred.then(params => {
+
+	const promise = new Promise((resolve, reject) => {
+		const channel = new MessageChannel();
+		channel.port1.onmessage = (e) => resolve(e.data);
+		channel.port1.onmessageerror = (e) => reject(e.data);
+		window.parent.postMessage({
+			action: actions.INIT_REQUEST,
+		}, '*', [channel.port2]);
+	});
+
+	promise.then(params => {
 		const {
 			debug, pluginId, domain,
 			siteId, privileged, indirect
 		} = params;
 		Object.assign(plug, {
 			debug, pluginId, domain, siteId, indirect,
-			Deferred, Store, hasSettings, PermissionAPI,
+			Store, hasSettings, PermissionAPI,
 			fetch, fetchInternal, Promise
 		});
 		// If either plugin is privileged or
@@ -39,9 +47,6 @@ export default () => {
 			});
 		}
 	});
-	window.parent.postMessage({
-		action: actions.INIT_REQUEST,
-		deferredId: deferred.id
-	}, '*');
-	return deferred;
+
+	return promise;
 };

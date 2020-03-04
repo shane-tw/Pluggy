@@ -1,15 +1,16 @@
-import Deferred from '../utils/deferred';
 import * as actions from '../constants/actions';
 
 class PermissionAPI {
 	static request(permissions) {
-		const deferred = new Deferred().register();
-		window.parent.postMessage({
-			action: actions.PERMISSION_GRANT_REQUEST,
-			deferredId: deferred.id,
-			params: { permissions }
-		}, '*');
-		return deferred;
+		return new Promise((resolve, reject) => {
+			const channel = new MessageChannel();
+			channel.port1.onmessage = (e) => resolve(e.data);
+			channel.port1.onmessageerror = (e) => reject(e.data);
+			window.parent.postMessage({
+				action: actions.PERMISSION_GRANT_REQUEST,
+				params: { permissions }
+			}, '*', [channel.port2]);
+		});
 	}
 }
 export default PermissionAPI;

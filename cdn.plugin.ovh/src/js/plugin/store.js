@@ -1,4 +1,3 @@
-import Deferred from '../utils/deferred';
 import * as validate from '../utils/validate';
 import * as actions from '../constants/actions';
 import plug from '.';
@@ -55,20 +54,21 @@ class Store {
 	}
 
 	static get(key) {
-		const deferred = new Deferred();
 		key = getStoreKey(key);
-		if (plug.indirect) {
-			deferred.register();
-			window.parent.postMessage({
-				action: actions.STORE_GET_REQUEST,
-				deferredId: deferred.id,
-				params: { key }
-			}, '*');
-			return deferred;
+		if (!plug.indirect) {
+			const val = window.localStorage.getItem(key);
+			return Promise.resolve(getParsedValue(val));
 		}
-		const val = window.localStorage.getItem(key);
-		deferred.resolve(getParsedValue(val));
-		return deferred;
+		return new Promise((resolve, reject) => {
+			const channel = new MessageChannel();
+			channel.port1.onmessage = (e) => resolve(e.data);
+			channel.port2.onmessageerror = (e) => reject(e.data);
+
+			window.parent.postMessage({
+				action: actions.STORE_GET,
+				params: { key }
+			}, '*', [channel.port2]);
+		});
 	}
 
 	static subscribe(key, callback) {

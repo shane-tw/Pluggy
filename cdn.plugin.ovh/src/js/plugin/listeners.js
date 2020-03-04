@@ -1,4 +1,3 @@
-import Deferred from '../utils/deferred';
 import Dialog from '../common/dialog';
 import Section from '../common/section';
 import * as actions from '../constants/actions';
@@ -29,32 +28,20 @@ window.addEventListener('message', evt => {
 	case actions.FETCH_RESPONSE:
 		fetchCallback(message);
 		break;
-	case actions.INIT_RESPONSE:
-		initCallback(message);
-		break;
 	case actions.VIEW_SETTINGS:
 		viewSettingsCallback(message);
 		break;
-	case actions.CHECK_SETTINGS_REQUEST:
+	case actions.CHECK_SETTINGS:
 		checkHasSettingsCallback(message);
-		break;
-	case actions.CHECK_SETTINGS_RESPONSE:
-		checkHasSettingsResponse(message);
 		break;
 	case actions.STORE_GET_REQUEST:
 		storeGetRequest(message);
-		break;
-	case actions.STORE_GET_RESPONSE:
-		storeGetResponse(message);
 		break;
 	case actions.STORE_SET_REQUEST:
 		storeSetRequest(message);
 		break;
 	case actions.STORE_VALUE_CHANGED:
 		storeValueChanged(message);
-		break;
-	case actions.PERMISSION_GRANT_RESPONSE:
-		permissionGrantResponse(message);
 		break;
 	case actions.GET_RENDER_PARAMS:
 		getRenderParams(message);
@@ -74,8 +61,10 @@ function getRenderParams(message) {
 	if (typeof component.render === 'function') {
 		renderParams = component.render(context);
 	}
-	if (renderParams instanceof Promise || renderParams instanceof Deferred) {
-		renderParams.then((res) => sendRender(res, deferredId));
+	if (renderParams instanceof Promise) {
+		renderParams.then((res) =>
+			sendRender(res, deferredId)
+		);
 	} else {
 		sendRender(renderParams, deferredId);
 	}
@@ -127,13 +116,6 @@ function fetchCallback(message) {
 	}
 }
 
-function initCallback(message) {
-	const { params, deferredId } = message;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve(params);
-}
-
 function handleFetchPromises(response) {
 	const { blob } = response;
 	const types = ['blob', 'json', 'text', 'arrayBuffer'];
@@ -173,42 +155,18 @@ function viewSettingsCallback() {
 }
 
 function checkHasSettingsCallback(message) {
-	const { deferredId } = message;
-	window.parent.postMessage({
-		action: actions.CHECK_SETTINGS_RESPONSE,
-		deferredId,
-		params: {
-			hasSettings: !!Dialog.get({ id: 'settings' })
-		}
-	}, '*');
-}
-
-function checkHasSettingsResponse(message) {
-	const { params, deferredId } = message;
-	const { hasSettings } = params;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve(hasSettings);
+	const hasSettings = !!Dialog.get({ id: 'settings' });
+	window.parent.postMessage(hasSettings, '*', port);
 }
 
 function storeGetRequest(message) {
-	const { params, deferredId } = message;
+	const { params } = message;
 	const { key } = params;
 	plug.Store.get(key).then(value => {
 		window.parent.postMessage({
-			action: actions.STORE_GET_RESPONSE,
-			deferredId,
 			params: { value }
-		}, '*');
+		}, '*', port);
 	});
-}
-
-function storeGetResponse(message) {
-	const { params, deferredId } = message;
-	const { value } = params;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve(value);
 }
 
 function storeSetRequest(message) {
@@ -225,11 +183,4 @@ function storeValueChanged(message) {
 		const subscriber = Store.subscribers[key][i];
 		subscriber(newValue, oldValue);
 	}
-}
-
-function permissionGrantResponse(message) {
-	const { deferredId } = message;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve();
 }

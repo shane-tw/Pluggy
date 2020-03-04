@@ -12,7 +12,6 @@ import * as tags from '../constants/tags';
 import * as errors from '../constants/errors';
 import getSelector from '../utils/getSelector';
 import { getPluginFrame } from './elems';
-import Deferred from '../utils/deferred';
 import fetch from '../utils/fetch';
 import closest from '../utils/closest';
 import plug from '.';
@@ -42,13 +41,10 @@ window.addEventListener('message', evt => {
 	// Any plugins or plugin-created dialogs can perform these
 	switch (action) {
 	case actions.INIT_REQUEST:
-		initRequest(message, srcFrame);
+		handleInit(message, srcFrame);
 		break;
 	case actions.STORE_GET_REQUEST:
 		storeGetRequest(message, srcFrame);
-		break;
-	case actions.STORE_GET_RESPONSE:
-		storeGetResponse(message, srcFrame);
 		break;
 	case actions.STORE_SET_REQUEST:
 		storeSetRequest(message, srcFrame);
@@ -61,9 +57,6 @@ window.addEventListener('message', evt => {
 		break;
 	case actions.PERMISSION_GRANT_REQUEST:
 		permissionGrantRequest(message, srcFrame);
-		break;
-	case actions.GET_RENDER_PARAMS:
-		getRenderParams(message);
 		break;
 	}
 
@@ -103,10 +96,6 @@ window.addEventListener('message', evt => {
 		case actions.DIALOG_CALL:
 			dialogCall(message);
 			break;
-		case actions.CHECK_SETTINGS_RESPONSE:
-			checkSettingsResponse(message);
-			break;
-		}
 	}
 });
 
@@ -148,13 +137,6 @@ function onPageLoad() {
 			}
 		}
 	}).observe(document.body, { childList: true, subtree: true });
-}
-
-function getRenderParams(message) {
-	const { params, deferredId } = message;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve(params);
 }
 
 function renderSections(nodes) {
@@ -250,7 +232,7 @@ function dialogCall(message) {
 }
 
 function fetchRequest(message, pluginFrame) {
-	const { plugin, params, deferredId } = message;
+	const { plugin, params } = message;
 	let { url, options = {} } = params;
 	const { method = 'GET' } = options;
 	url = urls.toAbsoluteURL(url);
@@ -280,20 +262,16 @@ function postFetchError(message, pluginFrame, err) {
 	}, '*');
 }
 
-function initRequest(message, pluginFrame) {
-	const { plugin, deferredId } = message;
+function handleInit(message, pluginFrame) {
+	const { plugin } = message;
 	pluginFrame.contentWindow.postMessage({
-		action: actions.INIT_RESPONSE,
-		deferredId,
-		params: {
-			debug: plug.debug,
-			siteId: plug.siteId,
-			pluginId: plugin.id,
-			domain: window.location.hostname,
-			privileged: plugin.privileged,
-			indirect: plugin.indirect
-		}
-	}, '*');
+		debug: plug.debug,
+		siteId: plug.siteId,
+		pluginId: plugin.id,
+		domain: window.location.hostname,
+		privileged: plugin.privileged,
+		indirect: plugin.indirect
+	}, '*', port);
 }
 
 function storeGetRequest(message, srcFrame) {
@@ -314,14 +292,6 @@ function storeGetRequest(message, srcFrame) {
 		deferredId: proxyDeferred.id,
 		params: { key }
 	}, '*');
-}
-
-function storeGetResponse(message) {
-	const { params, deferredId } = message;
-	const { value } = params;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve(value);
 }
 
 function storeSetRequest(message) {
@@ -378,16 +348,8 @@ function checkSettingsRequest(message, srcFrame) {
 	}, '*');
 }
 
-function checkSettingsResponse(message) {
-	const { params, deferredId } = message;
-	const { hasSettings } = params;
-	const deferred = Deferred.getById(deferredId);
-	if (!deferred) return;
-	deferred.resolve(hasSettings);
-}
-
 function permissionGrantRequest(message, srcFrame) {
-	const { plugin, params, deferredId } = message;
+	const { plugin, params } = message;
 	const { permissions = [] } = params;
 	for (let i = 0; i < permissions.length; i++) {
 		const params = permissions[i];
@@ -395,8 +357,5 @@ function permissionGrantRequest(message, srcFrame) {
 		if (!permission) continue;
 		permission.grant(plugin);
 	}
-	srcFrame.contentWindow.postMessage({
-		action: actions.PERMISSION_GRANT_RESPONSE,
-		deferredId: deferredId
-	}, '*');
+	srcFrame.contentWindow.postMessage(null, '*', port);
 }

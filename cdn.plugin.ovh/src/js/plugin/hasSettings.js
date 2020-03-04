@@ -1,5 +1,4 @@
 import Dialog from './dialog';
-import Deferred from '../utils/deferred';
 import * as actions from '../constants/actions';
 
 export default plugin => {
@@ -9,11 +8,13 @@ export default plugin => {
 			resolve(!!Dialog.get({ id: 'settings' }));
 		});
 	}
-	const deferred = new Deferred().register();
-	window.parent.postMessage({
-		action: actions.CHECK_SETTINGS_REQUEST,
-		deferredId: deferred.id,
-		params: { pluginId }
-	}, '*');
-	return deferred;
+	return new Promise((resolve, reject) => {
+		const channel = new MessageChannel();
+		channel.port1.onmessage = (e) => resolve(e.data);
+		channel.port1.onmessageerror = (e) => reject(e.data);
+		window.parent.postMessage({
+			action: actions.CHECK_SETTINGS_REQUEST,
+			params: { pluginId }
+		}, '*', [channel.port2]);
+	});
 };
