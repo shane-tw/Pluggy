@@ -25,20 +25,11 @@ class Store {
 	static subscribers = {};
 
 	static set(key, newValue) {
-		const deferred = new Deferred();
-		deferred.then(params => {
-			const { oldValue, newValue } = params;
-			if (!(key in this.subscribers)) return;
-			for (let i = 0; i < this.subscribers[key].length; i++) {
-				const subscriber = this.subscribers[key][i];
-				subscriber(newValue, oldValue);
-			}
-		});
-		this.get(key).then(oldValue => {
+		return this.get(key).then(oldValue => {
 			key = getStoreKey(key);
 			if (plug.indirect) {
 				window.parent.postMessage({
-					action: actions.STORE_SET_REQUEST,
+					action: actions.STORE_SET,
 					params: { key, value: newValue }
 				}, '*');
 			} else {
@@ -47,10 +38,13 @@ class Store {
 					action: actions.STORE_VALUE_CHANGED,
 					params: { key, oldValue, newValue }
 				}, '*');
-				deferred.resolve({ oldValue, newValue });
+				if (!(key in this.subscribers)) return;
+				for (let i = 0; i < this.subscribers[key].length; i++) {
+					const subscriber = this.subscribers[key][i];
+					subscriber(newValue, oldValue);
+				}
 			}
 		});
-		return deferred;
 	}
 
 	static get(key) {

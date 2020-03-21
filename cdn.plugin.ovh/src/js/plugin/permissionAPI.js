@@ -7,7 +7,7 @@ class PermissionAPI {
 			channel.port1.onmessage = (e) => resolve(e.data);
 			channel.port1.onmessageerror = (e) => reject(e.data);
 			window.parent.postMessage({
-				action: actions.PERMISSION_GRANT_REQUEST,
+				action: actions.PERMISSION_GRANT,
 				params: { permissions }
 			}, '*', [channel.port2]);
 		});

@@ -13,7 +13,7 @@ export default plugin => {
 		channel.port1.onmessage = (e) => resolve(e.data);
 		channel.port1.onmessageerror = (e) => reject(e.data);
 		window.parent.postMessage({
-			action: actions.CHECK_SETTINGS_REQUEST,
+			action: actions.CHECK_SETTINGS,
 			params: { pluginId }
 		}, '*', [channel.port2]);
 	});

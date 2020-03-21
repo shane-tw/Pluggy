@@ -19,7 +19,7 @@ export default () => {
 		channel.port1.onmessage = (e) => resolve(e.data);
 		channel.port1.onmessageerror = (e) => reject(e.data);
 		window.parent.postMessage({
-			action: actions.INIT_REQUEST,
+			action: actions.INIT,
 		}, '*', [channel.port2]);
 	});
 
@@ -28,6 +28,7 @@ export default () => {
 			debug, pluginId, domain,
 			siteId, privileged, indirect
 		} = params;
+
 		Object.assign(plug, {
 			debug, pluginId, domain, siteId, indirect,
 			Store, hasSettings, PermissionAPI,

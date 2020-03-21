@@ -40,23 +40,23 @@ window.addEventListener('message', evt => {
 
 	// Any plugins or plugin-created dialogs can perform these
 	switch (action) {
-	case actions.INIT_REQUEST:
-		handleInit(message, srcFrame);
+	case actions.INIT:
+		handleInit(evt);
 		break;
-	case actions.STORE_GET_REQUEST:
-		storeGetRequest(message, srcFrame);
+	case actions.STORE_GET:
+		storeGetRequest(evt);
 		break;
-	case actions.STORE_SET_REQUEST:
-		storeSetRequest(message, srcFrame);
+	case actions.STORE_SET:
+		storeSetRequest(evt);
 		break;
 	case actions.STORE_VALUE_CHANGED:
 		storeValueChanged(message, srcFrame);
 		break;
-	case actions.FETCH_REQUEST:
-		fetchRequest(message, srcFrame);
+	case actions.FETCH:
+		fetchRequest(evt);
 		break;
-	case actions.PERMISSION_GRANT_REQUEST:
-		permissionGrantRequest(message, srcFrame);
+	case actions.PERMISSION_GRANT:
+		permissionGrantRequest(evt);
 		break;
 	}
 
@@ -96,6 +96,7 @@ window.addEventListener('message', evt => {
 		case actions.DIALOG_CALL:
 			dialogCall(message);
 			break;
+		}
 	}
 });
 
@@ -231,67 +232,68 @@ function dialogCall(message) {
 	}
 }
 
-function fetchRequest(message, pluginFrame) {
+function fetchRequest(message) {
 	const { plugin, params } = message;
 	let { url, options = {} } = params;
 	const { method = 'GET' } = options;
 	url = urls.toAbsoluteURL(url);
-	const fetchMessage = {
-		action: actions.FETCH_RESPONSE,
-		deferredId
-	};
+
 	const canAccess = plug.PermissionAPI.canAccessRoute({ plugin, path: url, method });
 	if (!canAccess) {
-		postFetchError(message, pluginFrame, new Error(errors.URL_MUST_INTERNAL));
+		postFetchError(new Error(errors.URL_MUST_INTERNAL), ports);
 		return;
 	}
-	const errorBind = postFetchError.bind(null, message, pluginFrame);
+
+	const errorBind = (err) => postFetchError(err, ports);
 	fetch(url, options).then(res => {
 		serializeResponse(res).then(obj => {
-			fetchMessage.params = { type: 'success', response: obj };
-			pluginFrame.contentWindow.postMessage(fetchMessage, '*');
+			ports[0].postMessage({
+				type: 'success',
+				response: obj
+			});
 		}).catch(errorBind);
 	}).catch(errorBind);
 }
 
-function postFetchError(message, pluginFrame, err) {
-	const { deferredId } = message;
-	pluginFrame.contentWindow.postMessage({
-		action: actions.FETCH_RESPONSE, deferredId,
-		params: { type: 'error', error: serializeError(err) }
-	}, '*');
+function postFetchError(err, ports) {
+	ports[0].postMessage({
+		type: 'error',
+		error: serializeError(err)
+	});
 }
 
-function handleInit(message, pluginFrame) {
+function handleInit(message) {
 	const { plugin } = message;
-	pluginFrame.contentWindow.postMessage({
+	ports[0].postMessage({
 		debug: plug.debug,
 		siteId: plug.siteId,
 		pluginId: plugin.id,
 		domain: window.location.hostname,
 		privileged: plugin.privileged,
 		indirect: plugin.indirect
-	}, '*', port);
+	});
 }
 
-function storeGetRequest(message, srcFrame) {
-	const { plugin, params, deferredId : srcDeferredId } = message;
+function storeGetRequest(message) {
+	const { plugin, params } = message;
 	const { key } = params;
-	const proxyDeferred = new Deferred().register();
-	proxyDeferred.then(value => {
-		srcFrame.contentWindow.postMessage({
-			action: actions.STORE_GET_RESPONSE,
-			deferredId: srcDeferredId,
-			params: { value }
-		}, '*');
-	});
 	const pluginFrame = plugin._elem;
 	if (!pluginFrame) return;
-	pluginFrame.contentWindow.postMessage({
-		action: actions.STORE_GET_REQUEST,
-		deferredId: proxyDeferred.id,
-		params: { key }
-	}, '*');
+
+	const corePluginQuery = new Promise((resolve, reject) => {
+		const channelCore = new MessageChannel();
+		channelCore.port1.onmessage = (e) => resolve(e.data);
+		channelCore.port2.onmessageerror = (e) => reject(e.data);
+
+		pluginFrame.contentWindow.postMessage({
+			action: actions.STORE_GET,
+			params: { key }
+		}, '*', [channelCore.port2]);
+	});
+
+	corePluginQuery.then(value => {
+		ports[0].postMessage(value);
+	});
 }
 
 function storeSetRequest(message) {
@@ -299,7 +301,7 @@ function storeSetRequest(message) {
 	const { key, value } = params;
 	const pluginFrame = plugin._elem;
 	pluginFrame.contentWindow.postMessage({
-		action: actions.STORE_SET_REQUEST,
+		action: actions.STORE_SET,
 		params: { key, value }
 	}, '*');
 }
@@ -329,26 +331,28 @@ function viewSettingsRequest(message) {
 	}, '*');
 }
 
-function checkSettingsRequest(message, srcFrame) {
-	const { params, deferredId : srcDeferredId } = message;
+function checkSettingsRequest(message) {
+	const { params } = message;
 	const { pluginId } = params;
-	const proxyDeferred = new Deferred().register();
-	proxyDeferred.then(hasSettings => {
-		srcFrame.contentWindow.postMessage({
-			action: actions.CHECK_SETTINGS_RESPONSE,
-			deferredId: srcDeferredId,
-			params: { hasSettings }
-		}, '*');
-	});
 	const pluginFrame = getPluginFrame({ id: pluginId });
 	if (!pluginFrame) return;
-	pluginFrame.contentWindow.postMessage({
-		action: actions.CHECK_SETTINGS_REQUEST,
-		deferredId: proxyDeferred.id
-	}, '*');
+
+	const corePluginQuery = new Promise((resolve, reject) => {
+		const channelCore = new MessageChannel();
+		channelCore.port1.onmessage = (e) => resolve(e.data);
+		channelCore.port2.onmessageerror = (e) => reject(e.data);
+
+		pluginFrame.contentWindow.postMessage({
+			action: actions.CHECK_SETTINGS_REQUEST
+		}, '*', [channelCore.port2]);
+	});
+
+	corePluginQuery.then(hasSettings => {
+		ports[0].postMessage(hasSettings);
+	});
 }
 
-function permissionGrantRequest(message, srcFrame) {
+function permissionGrantRequest(message) {
 	const { plugin, params } = message;
 	const { permissions = [] } = params;
 	for (let i = 0; i < permissions.length; i++) {
@@ -357,5 +361,5 @@ function permissionGrantRequest(message, srcFrame) {
 		if (!permission) continue;
 		permission.grant(plugin);
 	}
-	srcFrame.contentWindow.postMessage(null, '*', port);
+	ports[0].postMessage(null);
 }

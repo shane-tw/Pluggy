@@ -17,13 +17,30 @@ class Dialog extends CommonDialog {
 		});
 	}
 
+	setVisible(visible) {
+		const sendMessage = () => {
+			window.parent.postMessage({
+				action: actions.DIALOG_CALL,
+				subAction: visible ? 'show' : 'hide',
+				params: this.plain()
+			}, '*');
+		};
+
+		if (this.updateTimer) {
+			this.updateTimer.then(sendMessage);
+		} else {
+			sendMessage();
+		}
+		return this;
+	}
+
 	show() {
-		setVisible(this, true);
+		this.setVisible(true);
 		return this;
 	}
 
 	hide() {
-		setVisible(this, false);
+		this.setVisible(false);
 		return this;
 	}
 
@@ -34,19 +51,3 @@ class Dialog extends CommonDialog {
 	}
 }
 export default Dialog;
-
-function setVisible(dialog, visible) {
-	const sendMessage = () => {
-		window.parent.postMessage({
-			action: actions.DIALOG_CALL,
-			subAction: visible ? 'show' : 'hide',
-			params: dialog.plain()
-		}, '*');
-	};
-
-	if (dialog.updateTimer) {
-		dialog.updateTimer.then(sendMessage);
-	} else {
-		sendMessage();
-	}
-}
