@@ -86,9 +86,7 @@ function storeGetRequest({data, ports}) {
 	const { params } = data;
 	const { key } = params;
 	plug.Store.get(key).then(value => {
-		ports[0].postMessage({
-			params: { value }
-		});
+		ports[0].postMessage(value);
 	});
 }
 

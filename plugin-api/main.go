@@ -27,7 +27,7 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	db, err := gorm.Open("mysql", "pluginuser:mari4db@tcp(:3603)/plugindb")
+	db, err := gorm.Open("mysql", "pluginuser:mari4db@tcp(:3306)/plugindb")
 	if err != nil {
 		fmt.Println("Error: Failed to establish database connection.")
 		return
