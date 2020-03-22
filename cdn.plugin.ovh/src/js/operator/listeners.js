@@ -19,13 +19,13 @@ import PermissionAPI from './permissionAPI';
 
 window.addEventListener('message', evt => {
 	if (!evt.data) return;
-	const message = evt.data;
-	const { params, action } = message;
+	const data = evt.data;
+	const { params, action } = data;
 
 	if (plug.debug) {
 		/* eslint-disable no-console */
 		console.log('Operator received message:');
-		console.log(message);
+		console.log(data);
 		/* eslint-enable no-console */
 	}
 
@@ -35,7 +35,7 @@ window.addEventListener('message', evt => {
 	if (!pluginElem) return;
 	let plugin = Plugin.get({ id: pluginElem.dataset.psPluginId });
 	if (!plugin) return;
-	message.plugin = plugin;
+	data.plugin = plugin;
 	plugin.indirect = (srcFrame.parentElement.id !== misc.PLUGIN_HOLDER_ID);
 
 	// Any plugins or plugin-created dialogs can perform these
@@ -50,7 +50,7 @@ window.addEventListener('message', evt => {
 		storeSetRequest(evt);
 		break;
 	case actions.STORE_VALUE_CHANGED:
-		storeValueChanged(message, srcFrame);
+		storeValueChanged(evt, srcFrame);
 		break;
 	case actions.FETCH:
 		fetchRequest(evt);
@@ -73,10 +73,10 @@ window.addEventListener('message', evt => {
 			PluginAPI.disableAll(params);
 			break;
 		case actions.VIEW_SETTINGS:
-			viewSettingsRequest(message);
+			viewSettingsRequest(evt);
 			break;
-		case actions.CHECK_SETTINGS_REQUEST:
-			checkSettingsRequest(message, srcFrame);
+		case actions.CHECK_SETTINGS:
+			checkSettingsRequest(evt);
 			break;
 		}
 	}
@@ -85,16 +85,16 @@ window.addEventListener('message', evt => {
 		// Any plugin can perform these actions (dialogs can't)
 		switch (action) {
 		case actions.SECTION_REGISTER:
-			registerSection(message);
+			registerSection(evt);
 			break;
 		case actions.COMPONENT_RENDER:
-			updateComponent(message);
+			updateComponent(evt);
 			break;
 		case actions.DIALOG_RENDER:
-			updateDialog(message);
+			updateDialog(evt);
 			break;
 		case actions.DIALOG_CALL:
-			dialogCall(message);
+			dialogCall(evt);
 			break;
 		}
 	}
@@ -175,8 +175,8 @@ function createComponent(params) {
 	return component;
 }
 
-function registerSection(message) {
-	const { plugin, params } = message;
+function registerSection({data}) {
+	const { plugin, params } = data;
 	const { components } = params;
 	params.plugin = plugin;
 	const section = Section.get(params);
@@ -192,8 +192,8 @@ function registerSection(message) {
 	section.render();
 }
 
-function updateComponent(message) {
-	const { plugin, params } = message;
+function updateComponent({data}) {
+	const { plugin, params } = data;
 	const { sectionId } = params;
 	params.plugin = plugin;
 	delete params.sectionId;
@@ -210,8 +210,8 @@ function updateComponent(message) {
 	section.render(null, component);
 }
 
-function updateDialog(message) {
-	const { plugin, params } = message;
+function updateDialog({data}) {
+	const { plugin, params } = data;
 	params.plugin = plugin;
 	let dialog = Dialog.get(params);
 	if (dialog) {
@@ -221,8 +221,8 @@ function updateDialog(message) {
 	dialog = new Dialog(params);
 }
 
-function dialogCall(message) {
-	const { plugin, params, subAction } = message;
+function dialogCall({data}) {
+	const { plugin, params, subAction } = data;
 	params.plugin = plugin;
 	const dialog = Dialog.get(params);
 	if (!dialog) return;
@@ -232,8 +232,8 @@ function dialogCall(message) {
 	}
 }
 
-function fetchRequest(message) {
-	const { plugin, params } = message;
+function fetchRequest({data, ports}) {
+	const { plugin, params } = data;
 	let { url, options = {} } = params;
 	const { method = 'GET' } = options;
 	url = urls.toAbsoluteURL(url);
@@ -262,8 +262,8 @@ function postFetchError(err, ports) {
 	});
 }
 
-function handleInit(message) {
-	const { plugin } = message;
+function handleInit({data, ports}) {
+	const { plugin } = data;
 	ports[0].postMessage({
 		debug: plug.debug,
 		siteId: plug.siteId,
@@ -274,8 +274,8 @@ function handleInit(message) {
 	});
 }
 
-function storeGetRequest(message) {
-	const { plugin, params } = message;
+function storeGetRequest({data, ports}) {
+	const { plugin, params } = data;
 	const { key } = params;
 	const pluginFrame = plugin._elem;
 	if (!pluginFrame) return;
@@ -296,8 +296,8 @@ function storeGetRequest(message) {
 	});
 }
 
-function storeSetRequest(message) {
-	const { plugin, params } = message;
+function storeSetRequest({data}) {
+	const { plugin, params } = data;
 	const { key, value } = params;
 	const pluginFrame = plugin._elem;
 	pluginFrame.contentWindow.postMessage({
@@ -306,8 +306,8 @@ function storeSetRequest(message) {
 	}, '*');
 }
 
-function storeValueChanged(message, srcFrame) {
-	const { plugin, params } = message;
+function storeValueChanged({data}, srcFrame) {
+	const { plugin, params } = data;
 	const { key, oldValue, newValue } = params;
 	const pluginSelect = getSelector('plugin', plugin.id);
 	const frames = document.querySelectorAll('iframe' + pluginSelect);
@@ -321,8 +321,8 @@ function storeValueChanged(message, srcFrame) {
 	}
 }
 
-function viewSettingsRequest(message) {
-	const { params } = message;
+function viewSettingsRequest({data}) {
+	const { params } = data;
 	const { pluginId } = params;
 	const pluginFrame = getPluginFrame({ id: pluginId });
 	if (!pluginFrame) return;
@@ -331,8 +331,8 @@ function viewSettingsRequest(message) {
 	}, '*');
 }
 
-function checkSettingsRequest(message) {
-	const { params } = message;
+function checkSettingsRequest({data, ports}) {
+	const { params } = data;
 	const { pluginId } = params;
 	const pluginFrame = getPluginFrame({ id: pluginId });
 	if (!pluginFrame) return;
@@ -343,7 +343,7 @@ function checkSettingsRequest(message) {
 		channelCore.port2.onmessageerror = (e) => reject(e.data);
 
 		pluginFrame.contentWindow.postMessage({
-			action: actions.CHECK_SETTINGS_REQUEST
+			action: actions.CHECK_SETTINGS
 		}, '*', [channelCore.port2]);
 	});
 
@@ -352,8 +352,8 @@ function checkSettingsRequest(message) {
 	});
 }
 
-function permissionGrantRequest(message) {
-	const { plugin, params } = message;
+function permissionGrantRequest({data, ports}) {
+	const { plugin, params } = data;
 	const { permissions = [] } = params;
 	for (let i = 0; i < permissions.length; i++) {
 		const params = permissions[i];

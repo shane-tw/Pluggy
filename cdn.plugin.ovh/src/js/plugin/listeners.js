@@ -8,13 +8,13 @@ import plug from '.';
 
 window.addEventListener('message', evt => {
 	if (!evt.data) return;
-	const message = evt.data;
-	const { action } = message;
+	const data = evt.data;
+	const { action } = data;
 
 	if (plug.debug) {
 		/* eslint-disable no-console */
-		console.log("Plugin with ID '" + plug.pluginId + "' received message");
-		console.log(message);
+		console.log("Plugin with ID '" + plug.pluginId + "' received data");
+		console.log(data);
 		/* eslint-enable no-console */
 	}
 
@@ -46,8 +46,8 @@ window.addEventListener('message', evt => {
 	}
 });
 
-function buttonCallback({data : message}) {
-	const { params, subAction } = message;
+function buttonCallback({data}) {
+	const { params, subAction } = data;
 	const { button : buttonParams, context } = params;
 	const { sectionId } = buttonParams;
 	const section = Section.get({ id: sectionId });
@@ -61,8 +61,8 @@ function buttonCallback({data : message}) {
 	}
 }
 
-function dialogCallback({data : message}) {
-	const { params, subAction } = message;
+function dialogCallback({data}) {
+	const { params, subAction } = data;
 	const dialog = Dialog.get(params);
 	if (!dialog || dialog.tag !== tags.DIALOG) return;
 	if (typeof dialog[subAction] === 'function') {
@@ -82,8 +82,8 @@ function checkHasSettings({ports}) {
 	ports[0].postMessage(hasSettings);
 }
 
-function storeGetRequest({data : message, ports}) {
-	const { params } = message;
+function storeGetRequest({data, ports}) {
+	const { params } = data;
 	const { key } = params;
 	plug.Store.get(key).then(value => {
 		ports[0].postMessage({
@@ -92,14 +92,14 @@ function storeGetRequest({data : message, ports}) {
 	});
 }
 
-function storeSetRequest({data : message}) {
-	const { params } = message;
+function storeSetRequest({data}) {
+	const { params } = data;
 	const { key, value } = params;
 	plug.Store.set(key, value);
 }
 
-function storeValueChanged({data : message}) {
-	const { params } = message;
+function storeValueChanged({data}) {
+	const { params } = data;
 	const { key, oldValue, newValue } = params;
 	if (!(key in Store.subscribers)) return;
 	for (let i = 0; i < Store.subscribers[key].length; i++) {
@@ -108,8 +108,8 @@ function storeValueChanged({data : message}) {
 	}
 }
 
-function getRenderParams({data : message, ports}) {
-	const { params } = message;
+function getRenderParams({data, ports}) {
+	const { params } = data;
 	const { component : componentParams, context } = params;
 	const { sectionId } = componentParams;
 	const section = Section.get({ id: sectionId });
